@@ -1,5 +1,6 @@
 #Critical Role of Insertion Preference for Invasion Trajectory of Transposons
-## Munasinghe, Springer, and Brandvain (in prep)
+
+Munasinghe, Springer, and Brandvain (in prep)
 
 This repository contains all of the SLiM scripts used to explore how the transpostion probability and insertion preference of a TE family influence the evolution of mean TE copy number and host populaton size, allowing for extinction. A set of 5 distinct models were developed to assess the outcome of introducing a TE, which can replicate freely, into a naïve population. These models varied ether the genomic architecture of the host population or specific aspects of TE biology. 
 
