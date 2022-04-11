@@ -1,14 +1,11 @@
-// MSI TEs in SLiM Script v7.1
-// 7/22/21
-// v7.1 - 8 Mutational Classes for TEs
-//    - Add Auto/Non-Auto Elements
-//    - TE Start @ Freq 1/2K
-//    - Loop Back Until Either Ext + Maint = 100 or TE_Loss = 1e7
-//		- Add Excision In
+/// Model 3 - Munasinghe, Springer, and Brandvain 2022
+/// Genome Architecture - Single Chromosome w/ Low Recombination
+/// TE Biology - No Excision + With Non-Autonomous Elements   
+/// Last Update - 04.11.2022
 
 
 // Check if output value is null - because there are no mutations of that class present
-// if it is, set value = 0.0 so that it gets outputted
+// if it is, set value = 0.0 so that class gets outputted
 function (fi)check_null(Nif x) {
 	if (!size(x)) {
 		x = 0.0;
@@ -16,7 +13,9 @@ function (fi)check_null(Nif x) {
 	return (x);
 }
 
-// Obtain relevant output values + save for output later
+// To track relevant trajectores, we store values of interest
+// so they can be outputted at the end
+// we only output trajectories for population extinction + dual survival outcomes
 function (lifso)obtain_rel_values(void) {
 	generation = sim.generation;
 	allIndividuals = sim.subpopulations.individuals; 
@@ -80,7 +79,8 @@ function (lifso)obtain_rel_values(void) {
 	return(rel_values);
 }
 
-// For any runs w/ extinction or maintenance, output full results
+// For any runs that result in population extinction or dual survival,
+// output all relevant trajectories
 function (void)output_success_run(void) {
 // Need to get filenames
 	OutputTraject_filename = 'Rep' + asString(sim.getValue('BioRepID')) + '_' + sim.getValue('outfile_header');
@@ -97,7 +97,9 @@ function (void)output_success_run(void) {
 	}
 }
 
-//Manage the looping of our simulation
+// Function to Restart Simulation By Looping Back to the Beginning 
+// i.e., we're starting another replicate for this param combo
+// If sufficient end states are met, end simulation
 function (void)restart_sim(string x) {
 	if (x=='EXT') {
 		sim.setValue('ext_restarts',sim.getValue('ext_restarts') + 1);
@@ -126,12 +128,12 @@ function (void)restart_sim(string x) {
 		current_gen = sim.generation;
 		
 		allIndividuals = sim.subpopulations.individuals; 
+		// Output Non-Autonomous Count @ Time of Autonomous TE Lost
 		all_nauto_count = mean(allIndividuals.countOfMutationsOfType(m5) + allIndividuals.countOfMutationsOfType(m6) + allIndividuals.countOfMutationsOfType(m7) + allIndividuals.countOfMutationsOfType(m8));
 		all_nauto_freq = mean(mean(check_null(sim.mutationFrequencies(NULL,sim.mutationsOfType(m5)))) + mean(check_null(sim.mutationFrequencies(NULL,sim.mutationsOfType(m6)))) + mean(check_null(sim.mutationFrequencies(NULL,sim.mutationsOfType(m7)))) + mean(check_null(sim.mutationFrequencies(NULL,sim.mutationsOfType(m8)))));
 		
 		
 		line = current_RepID + '\t' + current_gen + '\t' + all_nauto_count + '\t' + all_nauto_freq;
-		//catn(line);
 		LostTE_filename = "LostTE_" + sim.getValue('outfile_header');
 		writeFile(LostTE_filename,line,append=T);
 		sim.setValue('lost_tes',sim.getValue('lost_tes')+1);
@@ -144,7 +146,7 @@ function (void)restart_sim(string x) {
 	current_maint_number = sim.getValue('maint_restarts');
 	current_lost_tes_number = sim.getValue('lost_tes');
 	
-	// If we have 100 "Biological Replicates" (Extinction Events + Maint Events)
+	// If we have 100 "Biological Replicates" (Extinction Events + Dual Survival Events)
 	// Output LogFile + Terminate Simulation
 	if (current_ext_number + current_maint_number == 100) {
 		LogFile_filename = 'LogFile_' + outfile_header;
@@ -166,7 +168,7 @@ function (void)restart_sim(string x) {
 		sim.simulationFinished();
 	}
 	
-	// If the TE Family is lost 1,000,000 times 
+	// If the TE Family is lost 1 million times
 	// Output LogFile + Terminate Simulation
 	if (current_lost_tes_number == 1e6) {
 		LogFile_filename = 'LogFile_' + outfile_header;
@@ -199,11 +201,9 @@ initialize() {
 	initializeSLiMModelType("nonWF");
 	
 	// Static Parameters of Interest
-	defineConstant('L',1e5);
-	defineConstant('r',1e-8);
-	defineConstant('B',2);
-	//defineConstant('InitTe',100);
-	defineConstant('K',1000);
+	defineConstant('L',1e5); // 1 Chromosome with 1e5 sites
+	defineConstant('r',1e-8); // Recombination Rate
+	defineConstant('K',1000); // Hard Carrying Capacity
 	
 	// Variable Parameters of Interest
 	//defineConstant('teJumpP',1e-2);
@@ -279,11 +279,11 @@ initialize() {
   	defineConstant('outfile_header','teJumpP=' + asString(teJumpP) + '_neutP=' + asString(neutP) + '.txt');
   	LostTE_filename = "LostTE_" + outfile_header;
   	line = paste(c('RepID','Gen','#_nauto','nauto_freq'),sep='\t');
-  	//catn(line);
   	writeFile(LostTE_filename,line,append=T);
 }
 
-// Each individual reproduces B time, w/ second parent sampled randomly
+// Generate 2x the number of offspring as individuals present
+// Parents are chosen randomly
 reproduction() {
 	inds = sim.subpopulations.individuals;
 	// make double the current pop size worth of offspring
@@ -297,7 +297,7 @@ reproduction() {
 	self.active = 0;
 }
 
-// create an initial population of 10 individuals
+// create an initial population of 1000 individuals
 1 early() {	
 	defineConstant("simID", getSeed());
 	sim.setValue('outfile_header','teJumpP=' + asString(teJumpP) + '_neutP=' + asString(neutP) + '.txt');
@@ -324,7 +324,7 @@ early()
 }
 
 // Add TE Mutation + Save Sim State
-// Just do a small gen delay - this may not be necessary
+// Just do a small gen delay - this may not be necessary, but just do a small burn-in without any TEs or mutations
 5 late () {
 	// @Gen 5, save this - we will come back to this if sim needs to restart
 	sim.setValue('init_rel_trajects',c());
@@ -343,7 +343,12 @@ early()
 	sim.outputFull("/tmp/slim_" + simID + ".txt");
 }
 
-// Check to See If We Need To Restart Sim
+// Three Possible Outputs
+// (1) Host Population Extinction
+// (2) TE Loss from the Population
+// (3) Dual Survival of Both TE Lineage + Host Pop
+// Check Each Gen to See if Any End State Achieved
+// If so, record it + (potentially) loop back to initial TE introduction to start another run
 5:50000 late () {    
 	// If Pop Size = 0, extinction occurred, note and restart
 	if (sum(sim.subpopulations.individualCount) == 0) {
