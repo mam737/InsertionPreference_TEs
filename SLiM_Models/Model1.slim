@@ -15,6 +15,7 @@ function (fi)check_null(Nif x) {
 
 // To track relevant trajectores, we store values of interest
 // so they can be outputted at the end
+// we only output trajectories for population extinction + dual survival outcomes
 function (lifso)obtain_rel_values(void) {
 	generation = sim.generation;
 	allIndividuals = sim.subpopulations.individuals; 
@@ -53,9 +54,9 @@ function (lifso)obtain_rel_values(void) {
 	return(rel_values);
 }
 
+
 // For any runs that result in population extinction or dual survival,
 // output all relevant trajectories
-
 function (void)output_success_run(void) {
 // Need to get filenames
 	OutputTraject_filename = 'Rep' + asString(sim.getValue('BioRepID')) + '_' + sim.getValue('outfile_header');
