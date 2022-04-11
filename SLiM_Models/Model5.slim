@@ -1,12 +1,10 @@
-// MSI TEs in SLiM Script v3.3
-// 9/16/21
-// v3.3 - 4 Mutational Classes for TEs
-//		- Change Genome Architecture To Discrete C'Somes
-//    - TE Start @ Freq 1/2K
-//    - Loop Back 
+/// Model 5 - Munasinghe, Springer, and Brandvain 2022
+/// Genome Architecture - Five Chromosome w/ High Recombination
+/// TE Biology - No Excision + No Non-Autonomous Elements   
+/// Last Update - 04.11.2022
 
 // Check if output value is null - because there are no mutations of that class present
-// if it is, set value = 0.0 so that it gets outputted
+// if it is, set value = 0.0 so that class gets outputted
 function (fi)check_null(Nif x) {
 	if (!size(x)) {
 		x = 0.0;
@@ -14,7 +12,10 @@ function (fi)check_null(Nif x) {
 	return (x);
 }
 
-// Obtain relevant output values + save for output later
+
+// To track relevant trajectores, we store values of interest
+// so they can be outputted at the end
+// we only output trajectories for population extinction + dual survival outcomes
 function (lifso)obtain_rel_values(void) {
 	generation = sim.generation;
 	allIndividuals = sim.subpopulations.individuals; 
@@ -53,7 +54,9 @@ function (lifso)obtain_rel_values(void) {
 	return(rel_values);
 }
 
-// For any runs w/ extinction or maintenance, output full results
+
+// For any runs that result in population extinction or dual survival,
+// output all relevant trajectories
 function (void)output_success_run(void) {
 // Need to get filenames
 	OutputTraject_filename = 'Rep' + asString(sim.getValue('BioRepID')) + '_' + sim.getValue('outfile_header');
@@ -70,6 +73,9 @@ function (void)output_success_run(void) {
 	}
 }
 
+// Function to Restart Simulation By Looping Back to the Beginning 
+// i.e., we're starting another replicate for this param combo
+// If sufficient end states are met, end simulation
 function (void)restart_sim(string x) {
 	if (x=='EXT') {
 		sim.setValue('ext_restarts',sim.getValue('ext_restarts') + 1);
@@ -110,7 +116,7 @@ function (void)restart_sim(string x) {
 	current_maint_number = sim.getValue('maint_restarts');
 	current_lost_tes_number = sim.getValue('lost_tes');
 	
-	// If we have 100 "Biological Replicates" (Extinction Events + Maint Events)
+	// If we have 100 "Biological Replicates" (Extinction Events + Dual Survival Events)
 	// Output LogFile + Terminate Simulation
 	if (current_ext_number + current_maint_number == 100) {
 		LogFile_filename = 'LogFile_' + outfile_header;
@@ -164,15 +170,13 @@ function (void)restart_sim(string x) {
 
 initialize() {
 	initializeSLiMModelType("nonWF");
-	
+
 	// Static Parameters of Interest
-	// Total Genome Size = 5e5 for 5 distinct csomes of length 1e5 bp
-	defineConstant('L',5e5);
-	
-	defineConstant('B',2);
-	//defineConstant('InitTe',100);
-	defineConstant('K',1000);
-	
+	defineConstant('L',5e5); // 5 Chromosome each with 1e5 sites
+	defineConstant('K',1000); // Hard Carrying Capacity
+	// See Below for Recombination Rate Given Multiple C'Somes
+		
+
 	// Variable Parameters of Interest
 	//defineConstant('teJumpP',1e-3);
 	//defineConstant('neutP',0.1);
@@ -219,7 +223,7 @@ initialize() {
   	
   	//No Mutation Rate as Things Spread Only Via Jumping
   	initializeMutationRate(0.0);
-  	//initializeRecombinationRate(1e-8);
+
   	// Set up 5 distinct csomes with recombination rate 1e-5 that are each a morgan long
   	rates = c(1e-5, 0.5, 1e-5, 0.5, 1e-5, 0.5, 1e-5, 0.5, 1e-5);
   	ends = c(99999,100000,199999,200000,299999,300000,399999,400000,499999);
@@ -228,11 +232,11 @@ initialize() {
   	defineConstant('outfile_header','teJumpP=' + asString(teJumpP) + '_neutP=' + asString(neutP) + '.txt');
   	LostTE_filename = "LostTE_" + outfile_header;
   	line = paste(c('RepID','Gen'),sep='\t');
-  	//catn(line);
   	writeFile(LostTE_filename,line,append=T);
 }
 
-// Each individual reproduces B time, w/ second parent sampled randomly
+// Generate 2x the number of offspring as individuals present
+// Parents are chosen randomly
 reproduction() {
 	inds = sim.subpopulations.individuals;
 	// make double the current pop size worth of offspring
@@ -246,7 +250,8 @@ reproduction() {
 	self.active = 0;
 }
 
-// create an initial population of 10 individuals
+// create an initial population of 1000 individuals
+
 1 early() {	
 	defineConstant("simID", getSeed());
 	sim.setValue('outfile_header','teJumpP=' + asString(teJumpP) + '_neutP=' + asString(neutP) + '.txt');
@@ -273,7 +278,8 @@ early()
 }
 
 // Add TE Mutation + Save Sim State
-// Just do a small gen delay - this may not be necessary
+// Just do a small gen delay - this may not be necessary, but just do a small burn-in without any TEs or mutations
+
 5 late () {
 	// @Gen 5, save this - we will come back to this if sim needs to restart
 	sim.setValue('init_rel_trajects',c());
@@ -292,7 +298,12 @@ early()
 	sim.outputFull("/tmp/slim_" + simID + ".txt");
 }
 
-// Check to See If We Need To Restart Sim
+// Three Possible Outputs
+// (1) Host Population Extinction
+// (2) TE Loss from the Population
+// (3) Dual Survival of Both TE Lineage + Host Pop
+// Check Each Gen to See if Any End State Achieved
+// If so, record it + (potentially) loop back to initial TE introduction to start another run
 5:50000 late () {    
 	// If Pop Size = 0, extinction occurred, note and restart
 	if (sum(sim.subpopulations.individualCount) == 0) {
