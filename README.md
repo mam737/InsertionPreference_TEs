@@ -12,4 +12,4 @@ This repository contains all of the SLiM scripts used to explore how the transpo
 | 4      | One       | 1.0e-08      | Yes       | Yes      |
 | 5      | Five       | 1.0e-05      | No       | No      |
 
-The folder \textbf{SLiM_Models} contains the associated SLiM scripts named following this conventon (ModelX.slim). The header of each of these files provides details about the genomic architecture and TE biology considered. 
+The folder **SLiM_Models** contains the associated SLiM scripts named following this conventon -ModelX.slim. The header of each of these files provides details about the genomic architecture and TE biology considered. 
