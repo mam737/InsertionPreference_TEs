@@ -1,8 +1,7 @@
-/// Model 1 - Munasinghe, Springer, and Brandvain 2022
-/// Genome Architecture - Single Chromosome w/ Low Recombination
+/// Model 5 - Munasinghe, Springer, and Brandvain 2022
+/// Genome Architecture - Five Chromosome w/ High Recombination
 /// TE Biology - No Excision + No Non-Autonomous Elements   
 /// Last Update - 04.11.2022
-
 
 // Check if output value is null - because there are no mutations of that class present
 // if it is, set value = 0.0 so that class gets outputted
@@ -12,6 +11,7 @@ function (fi)check_null(Nif x) {
 	}
 	return (x);
 }
+
 
 // To track relevant trajectores, we store values of interest
 // so they can be outputted at the end
@@ -68,6 +68,7 @@ function (void)output_success_run(void) {
 		pos_end = (19*i) + 18;
 		gen_output = final_rel_trajects[pos_start:pos_end];
 		line = paste(gen_output,sep='\t');
+		//catn(line);
 		writeFile(OutputTraject_filename,line,append=T);
 	}
 }
@@ -138,7 +139,7 @@ function (void)restart_sim(string x) {
 		sim.simulationFinished();
 	}
 	
-	// If the TE Family is lost 1 million times
+	// If the TE Family is lost 1 million times 
 	// Output LogFile + Terminate Simulation
 	if (current_lost_tes_number == 1e6) {
 		LogFile_filename = 'LogFile_' + outfile_header;
@@ -164,20 +165,21 @@ function (void)restart_sim(string x) {
 	// loop back to the save state + restart SIM
 	sim.setValue('RUNID',sim.getValue('RUNID') + 1);
 	sim.readFromPopulationFile("/tmp/slim_" + simID + ".txt");
-   setSeed(getSeed() + 1); // Get new replicate by changing the seed	
+   setSeed(getSeed() + 1);	
 }
 
 initialize() {
 	initializeSLiMModelType("nonWF");
-	
+
 	// Static Parameters of Interest
-	defineConstant('L',1e5); // 1 Chromosome with 1e5 sites
-	defineConstant('r',1e-8); // Recombination Rate
+	defineConstant('L',5e5); // 5 Chromosome each with 1e5 sites
 	defineConstant('K',1000); // Hard Carrying Capacity
-	
+	// See Below for Recombination Rate Given Multiple C'Somes
+		
+
 	// Variable Parameters of Interest
-	//defineConstant('teJumpP',1e-5);
-	//defineConstant('neutP',0.001);
+	//defineConstant('teJumpP',1e-3);
+	//defineConstant('neutP',0.1);
 	
 	//Define Mutation Types
 	
@@ -221,7 +223,11 @@ initialize() {
   	
   	//No Mutation Rate as Things Spread Only Via Jumping
   	initializeMutationRate(0.0);
-  	initializeRecombinationRate(r);
+
+  	// Set up 5 distinct csomes with recombination rate 1e-5 that are each a morgan long
+  	rates = c(1e-5, 0.5, 1e-5, 0.5, 1e-5, 0.5, 1e-5, 0.5, 1e-5);
+  	ends = c(99999,100000,199999,200000,299999,300000,399999,400000,499999);
+  	initializeRecombinationRate(rates, ends); 
   	
   	defineConstant('outfile_header','teJumpP=' + asString(teJumpP) + '_neutP=' + asString(neutP) + '.txt');
   	LostTE_filename = "LostTE_" + outfile_header;
@@ -245,6 +251,7 @@ reproduction() {
 }
 
 // create an initial population of 1000 individuals
+
 1 early() {	
 	defineConstant("simID", getSeed());
 	sim.setValue('outfile_header','teJumpP=' + asString(teJumpP) + '_neutP=' + asString(neutP) + '.txt');
@@ -272,6 +279,7 @@ early()
 
 // Add TE Mutation + Save Sim State
 // Just do a small gen delay - this may not be necessary, but just do a small burn-in without any TEs or mutations
+
 5 late () {
 	// @Gen 5, save this - we will come back to this if sim needs to restart
 	sim.setValue('init_rel_trajects',c());
@@ -286,7 +294,7 @@ early()
 	target = sample(p1.genomes, 1);
  	target.addNewDrawnMutation(m1, sample(neut_sites,1));
 	
-	// save the initialized state where we add a TE into the population @ freq 1/2K
+	// save the state of the simulation
 	sim.outputFull("/tmp/slim_" + simID + ".txt");
 }
 

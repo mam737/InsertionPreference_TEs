@@ -1,13 +1,11 @@
-// MSI TEs in SLiM Script v10
-// 9/20/22
-// v10 - 4 Mutational Classes for TEs
-//		- Change Genome Architecture To Discrete C'Somes
-//    - TE Start @ Freq 1/2K
-//    - Loop Back 
-//		- Inversely scale transposition dependent on copy number
+/// Model 4 - Munasinghe, Springer, and Brandvain 2022
+/// Genome Architecture - Single Chromosome w/ Low Recombination
+/// TE Biology - With Excision + With Non-Autonomous Elements   
+/// Last Update - 04.11.2022
+
 
 // Check if output value is null - because there are no mutations of that class present
-// if it is, set value = 0.0 so that it gets outputted
+// if it is, set value = 0.0 so that class gets outputted
 function (fi)check_null(Nif x) {
 	if (!size(x)) {
 		x = 0.0;
@@ -15,20 +13,9 @@ function (fi)check_null(Nif x) {
 	return (x);
 }
 
-// Track teJumpP Scaling Over Time 
-
-//function (lifso)track_transposition_scaling(void) {
-//	allIndividuals = sim.subpopulations.individuals;
-//	mean_cn = check_null(mean(allIndividuals.countOfMutationsOfType(m1) + allIndividuals.countOfMutationsOfType(m2) + //allIndividuals.countOfMutationsOfType(m3) + allIndividuals.countOfMutationsOfType(m4)));
-//	mean_scaled_teJumpP = teJumpP/(1 + (scaleK * mean_cn));
-		
-//	cat('Original teJumpP -  ' + asString(teJumpP) + ' ::: Current teJumpP - ' + asString(mean_scaled_teJumpP ) + ' ::: Current CN - ' + asString(mean_cn) + '\n');
-//	return(mean_scaled_teJumpP);
-//	
-//}
-
-
-// Obtain relevant output values + save for output later
+// To track relevant trajectores, we store values of interest
+// so they can be outputted at the end
+// we only output trajectories for population extinction + dual survival outcomes
 function (lifso)obtain_rel_values(void) {
 	generation = sim.generation;
 	allIndividuals = sim.subpopulations.individuals; 
@@ -58,30 +45,51 @@ function (lifso)obtain_rel_values(void) {
 	var_cn_m4 = check_null(var(allIndividuals.countOfMutationsOfType(m4)));
 	mean_freq_m4 = check_null(mean(sim.mutationFrequencies(NULL,sim.mutationsOfType(m4))));
 	var_freq_m4 = check_null(var(sim.mutationFrequencies(NULL,sim.mutationsOfType(m4))));
+
+	mean_cn_m5 = check_null(mean(allIndividuals.countOfMutationsOfType(m5)));
+	var_cn_m5 = check_null(var(allIndividuals.countOfMutationsOfType(m5)));
+	mean_freq_m5 = check_null(mean(sim.mutationFrequencies(NULL,sim.mutationsOfType(m5))));
+	var_freq_m5 = check_null(var(sim.mutationFrequencies(NULL,sim.mutationsOfType(m5))));
 	
-	// Add in to track teJump scaling with changes in copy number
-	mean_cn = check_null(mean(allIndividuals.countOfMutationsOfType(m1) + allIndividuals.countOfMutationsOfType(m2) + allIndividuals.countOfMutationsOfType(m3) + allIndividuals.countOfMutationsOfType(m4)));
-	mean_scaled_teJumpP = teJumpP/(1 + (scaleK * mean_cn));
+	mean_cn_m6 = check_null(mean(allIndividuals.countOfMutationsOfType(m6)));
+	var_cn_m6 = check_null(var(allIndividuals.countOfMutationsOfType(m6)));
+	mean_freq_m6 = check_null(mean(sim.mutationFrequencies(NULL,sim.mutationsOfType(m6))));
+	var_freq_m6 = check_null(var(sim.mutationFrequencies(NULL,sim.mutationsOfType(m6))));
+	
+	mean_cn_m7 = check_null(mean(allIndividuals.countOfMutationsOfType(m7)));
+	var_cn_m7 = check_null(var(allIndividuals.countOfMutationsOfType(m7)));
+	mean_freq_m7 = check_null(mean(sim.mutationFrequencies(NULL,sim.mutationsOfType(m7))));
+	var_freq_m7 = check_null(var(sim.mutationFrequencies(NULL,sim.mutationsOfType(m7))));
+
+	mean_cn_m8 = check_null(mean(allIndividuals.countOfMutationsOfType(m8)));
+	var_cn_m8 = check_null(var(allIndividuals.countOfMutationsOfType(m8)));
+	mean_freq_m8 = check_null(mean(sim.mutationFrequencies(NULL,sim.mutationsOfType(m8))));
+	var_freq_m8 = check_null(var(sim.mutationFrequencies(NULL,sim.mutationsOfType(m8))));	
+
 	
 	rel_values =  c(generation, pop_size, p1_mean_fit, 
 	mean_cn_m1, var_cn_m1, mean_freq_m1, var_freq_m1, 
 	mean_cn_m2, var_cn_m2, mean_freq_m2, var_freq_m2, 
 	mean_cn_m3, var_cn_m3, mean_freq_m3, var_freq_m3, 
-	mean_cn_m4, var_cn_m4, mean_freq_m4, var_freq_m4,
-	mean_cn,mean_scaled_teJumpP);
+	mean_cn_m4, var_cn_m4, mean_freq_m4, var_freq_m4, 
+	mean_cn_m5, var_cn_m5, mean_freq_m5, var_freq_m5, 
+	mean_cn_m6, var_cn_m6, mean_freq_m6, var_freq_m6, 
+	mean_cn_m7, var_cn_m7, mean_freq_m7, var_freq_m7, 
+	mean_cn_m8, var_cn_m8, mean_freq_m8, var_freq_m8);
 	return(rel_values);
 }
 
-// For any runs w/ extinction or maintenance, output full results
+// For any runs that result in population extinction or dual survival,
+// output all relevant trajectories
 function (void)output_success_run(void) {
 // Need to get filenames
 	OutputTraject_filename = 'Rep' + asString(sim.getValue('BioRepID')) + '_' + sim.getValue('outfile_header');
 	//catn(OutputTraject_filename);
 	final_rel_trajects = sim.getValue('init_rel_trajects');
 	
-	for (i in 0:((length(final_rel_trajects)/21)-1)) {
-		pos_start = 21*i;
-		pos_end = (21*i) + 20;
+	for (i in 0:((length(final_rel_trajects)/35)-1)) {
+		pos_start = 35*i;
+		pos_end = (35*i) + 34;
 		gen_output = final_rel_trajects[pos_start:pos_end];
 		line = paste(gen_output,sep='\t');
 		//catn(line);
@@ -89,11 +97,14 @@ function (void)output_success_run(void) {
 	}
 }
 
+// Function to Restart Simulation By Looping Back to the Beginning 
+// i.e., we're starting another replicate for this param combo
+// If sufficient end states are met, end simulation
 function (void)restart_sim(string x) {
 	if (x=='EXT') {
 		sim.setValue('ext_restarts',sim.getValue('ext_restarts') + 1);
 		last_stored_traject = sim.getValue('last_traject');
-		sim.setValue('init_rel_trajects',c(sim.getValue('init_rel_trajects'),last_stored_traject));
+		sim.setValue('init_rel_trajects', c(sim.getValue('init_rel_trajects'), last_stored_traject));
 		//Output simulation state, clear rel. values
 		output_success_run();
 		sim.setValue('init_rel_trajects',c());
@@ -104,7 +115,7 @@ function (void)restart_sim(string x) {
 	if (x=='MAINT') {
 		sim.setValue('maint_restarts',sim.getValue('maint_restarts') + 1);
 		last_stored_traject = sim.getValue('last_traject');
-		sim.setValue('init_rel_trajects',c(sim.getValue('init_rel_trajects'),last_stored_traject));
+		sim.setValue('init_rel_trajects', c(sim.getValue('init_rel_trajects'), last_stored_traject));
 		//Output simulation state, clear rel. values
 		output_success_run();
 		sim.setValue('init_rel_trajects',c());
@@ -115,8 +126,13 @@ function (void)restart_sim(string x) {
 	if (x=='LOST') {
 		current_RepID = sim.getValue('RUNID');
 		current_gen = sim.generation;
-		line = current_RepID + '\t' + current_gen;
-		//catn(line);
+		
+		allIndividuals = sim.subpopulations.individuals; 
+		all_nauto_count = mean(allIndividuals.countOfMutationsOfType(m5) + allIndividuals.countOfMutationsOfType(m6) + allIndividuals.countOfMutationsOfType(m7) + allIndividuals.countOfMutationsOfType(m8));
+		all_nauto_freq = mean(mean(check_null(sim.mutationFrequencies(NULL,sim.mutationsOfType(m5)))) + mean(check_null(sim.mutationFrequencies(NULL,sim.mutationsOfType(m6)))) + mean(check_null(sim.mutationFrequencies(NULL,sim.mutationsOfType(m7)))) + mean(check_null(sim.mutationFrequencies(NULL,sim.mutationsOfType(m8)))));
+		
+		
+		line = current_RepID + '\t' + current_gen + '\t' + all_nauto_count + '\t' + all_nauto_freq;
 		LostTE_filename = "LostTE_" + sim.getValue('outfile_header');
 		writeFile(LostTE_filename,line,append=T);
 		sim.setValue('lost_tes',sim.getValue('lost_tes')+1);
@@ -129,11 +145,10 @@ function (void)restart_sim(string x) {
 	current_maint_number = sim.getValue('maint_restarts');
 	current_lost_tes_number = sim.getValue('lost_tes');
 	
-	// If we have 100 "Biological Replicates" (Extinction Events + Maint Events)
+	// If we have 100 "Biological Replicates" (Extinction Events + Dual Survival Events)
 	// Output LogFile + Terminate Simulation
 	if (current_ext_number + current_maint_number == 100) {
 		LogFile_filename = 'LogFile_' + outfile_header;
-	
 	
 		line = 'Total # of Runs: ' + asString(sim.getValue('RUNID'));
 		writeFile(LogFile_filename,line,append=T);
@@ -152,7 +167,7 @@ function (void)restart_sim(string x) {
 		sim.simulationFinished();
 	}
 	
-	// If the TE Family is lost 1 million times 
+	// If the TE Family is lost 1 million times
 	// Output LogFile + Terminate Simulation
 	if (current_lost_tes_number == 1e6) {
 		LogFile_filename = 'LogFile_' + outfile_header;
@@ -178,48 +193,68 @@ function (void)restart_sim(string x) {
 	// loop back to the save state + restart SIM
 	sim.setValue('RUNID',sim.getValue('RUNID') + 1);
 	sim.readFromPopulationFile("/tmp/slim_" + simID + ".txt");
-   setSeed(getSeed() + 1);	
+   setSeed(getSeed() + 1);	// Get new replicate by changing the seed	
 }
 
 initialize() {
 	initializeSLiMModelType("nonWF");
 	
 	// Static Parameters of Interest
-	// Total Genome Size = 5e5 for 5 distinct csomes of length 1e5 bp
-	defineConstant('L',5e5);
-	
-	defineConstant('B',2);
-	//defineConstant('InitTe',100);
-	defineConstant('K',1000);
+	defineConstant('L',1e5); // 1 Chromosome with 1e5 sites
+	defineConstant('r',1e-8); // Recombination Rate
+	defineConstant('K',1000); // Hard Carrying Capacity
 	
 	// Variable Parameters of Interest
-	//defineConstant('teJumpP',5e-3);
-	//defineConstant('neutP',0.9);
-	defineConstant('scaleK',0.05);
+	//defineConstant('teJumpP',1e-2);
+	//defineConstant('neutP',0.5);
+	defineConstant('excision_rate',0.1*teJumpP); // Excision at 1/10th transposition
 	
-	//Define Mutation Types
+	// Define Mutation Classes
+	// Total of 8 Mutation Classes
+	// 4 Selective Coefficients X 2 Auto States
+		
 	
-	//Neutral Active TE
+	//Neutral + autonomous TE
 	initializeMutationType('m1',0.5,'f',0.0);
 	m1.convertToSubstitution = F;
-	m1.color = 'lightblue';
+	m1.color = 'firebrick';
 	
-	//Mini-Deleterious Active TE
+	//Mini-Deleterious + autonomous TE
 	initializeMutationType('m2',0.5,'f',-0.005);
 	m2.convertToSubstitution = F;
-	m2.color = 'yellow';	
+	m2.color = 'orangered';	
 
-	//Modest-Deleterious Active TE
+	//Modest-Deleterious + autonomous TE
 	initializeMutationType('m3',0.5,'f',-0.05);
 	m3.convertToSubstitution = F;
-	m3.color = 'orange';
+	m3.color = 'orange1';
 	
-	//Massive-Deleterious Active TE
+	//Massive-Deleterious + autonomous Active TE
 	initializeMutationType('m4',0.5,'f',-0.5);
 	m4.convertToSubstitution = F;
-	m4.color = 'red';
+	m4.color = 'gold1';
 	
-  	initializeGenomicElementType('g1',c(m1,m2,m3,m4), c(1.0,1.0,1.0,1.0));
+	//Neutral + nonautonomous TE
+	initializeMutationType('m5',0.5,'f',0.0);
+	m5.convertToSubstitution = F;
+	m5.color = 'olivedrab';
+	
+	//Mini-Deleterious + nonautonomous TE
+	initializeMutationType('m6',0.5,'f',-0.005);
+	m6.convertToSubstitution = F;
+	m6.color = 'powderblue';	
+
+	//Modest-Deleterious + nonautonomous TE
+	initializeMutationType('m7',0.5,'f',-0.05);
+	m7.convertToSubstitution = F;
+	m7.color = 'navy';
+	
+	//Massive-Deleterious + nonautonomous Active TE
+	initializeMutationType('m8',0.5,'f',-0.5);
+	m8.convertToSubstitution = F;
+	m8.color = 'purple';
+	
+  	initializeGenomicElementType('g1',c(m1,m2,m3,m4,m5,m6,m7,m8), c(1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0));
 
   	initializeGenomicElement(g1,0,L-1);
   	
@@ -239,20 +274,16 @@ initialize() {
   	
   	//No Mutation Rate as Things Spread Only Via Jumping
   	initializeMutationRate(0.0);
-  	//initializeRecombinationRate(1e-8);
-  	// Set up 5 distinct csomes with recombination rate 1e-5 that are each a morgan long
-  	rates = c(1e-5, 0.5, 1e-5, 0.5, 1e-5, 0.5, 1e-5, 0.5, 1e-5);
-  	ends = c(99999,100000,199999,200000,299999,300000,399999,400000,499999);
-  	initializeRecombinationRate(rates, ends); 
+  	initializeRecombinationRate(r);
   	
   	defineConstant('outfile_header','teJumpP=' + asString(teJumpP) + '_neutP=' + asString(neutP) + '.txt');
   	LostTE_filename = "LostTE_" + outfile_header;
-  	line = paste(c('RepID','Gen'),sep='\t');
-  	//catn(line);
+  	line = paste(c('RepID','Gen','#_nauto','nauto_freq'),sep='\t');
   	writeFile(LostTE_filename,line,append=T);
 }
 
-// Each individual reproduces B time, w/ second parent sampled randomly
+// Generate 2x the number of offspring as individuals present
+// Parents are chosen randomly
 reproduction() {
 	inds = sim.subpopulations.individuals;
 	// make double the current pop size worth of offspring
@@ -266,7 +297,7 @@ reproduction() {
 	self.active = 0;
 }
 
-// create an initial population of 10 individuals
+// create an initial population of 1000 individuals
 1 early() {	
 	defineConstant("simID", getSeed());
 	sim.setValue('outfile_header','teJumpP=' + asString(teJumpP) + '_neutP=' + asString(neutP) + '.txt');
@@ -293,7 +324,7 @@ early()
 }
 
 // Add TE Mutation + Save Sim State
-// Just do a small gen delay - this may not be necessary
+// Just do a small gen delay - this may not be necessary, but just do a small burn-in without any TEs or mutations
 5 late () {
 	// @Gen 5, save this - we will come back to this if sim needs to restart
 	sim.setValue('init_rel_trajects',c());
@@ -304,7 +335,7 @@ early()
 	sim.setValue('ext_restarts',0);
 	sim.setValue('maint_restarts',0);
 	
-	// Add a neutral TE at a random position
+	// Add a neutral + autonomous TE at a random position
 	target = sample(p1.genomes, 1);
  	target.addNewDrawnMutation(m1, sample(neut_sites,1));
 	
@@ -312,7 +343,13 @@ early()
 	sim.outputFull("/tmp/slim_" + simID + ".txt");
 }
 
-// Check to See If We Need To Restart Sim
+
+// Three Possible Outputs
+// (1) Host Population Extinction
+// (2) TE Loss from the Population
+// (3) Dual Survival of Both TE Lineage + Host Pop
+// Check Each Gen to See if Any End State Achieved
+// If so, record it + (potentially) loop back to initial TE introduction to start another run
 5:50000 late () {    
 	// If Pop Size = 0, extinction occurred, note and restart
 	if (sum(sim.subpopulations.individualCount) == 0) {
@@ -320,9 +357,13 @@ early()
 		restart_sim('EXT');
 	}
 	
+	allIndividuals = sim.subpopulations.individuals; 
+	n_auto = sum(allIndividuals.countOfMutationsOfType(m1) + allIndividuals.countOfMutationsOfType(m2) + allIndividuals.countOfMutationsOfType(m3) + allIndividuals.countOfMutationsOfType(m4));
+	
+	
 	// Check to see if there are no more TEs
-   // If no more active TEs, note and restart
-   if (size(sim.mutations)==0) {
+   // If no more auto TEs, note and restart
+   if (n_auto == 0) {
    	cat('Run ' + asString(sim.getValue('RUNID')) + ': TE FAMILY LOST, NOTED + RESTARTED...\n');
    	restart_sim('LOST');
    } 	
@@ -337,12 +378,40 @@ early()
 // Every 20 Gens Save Trajectory of Relevant Values to List
 late () {
 	current_traject = obtain_rel_values();
+	//catn(current_traject);
 	sim.setValue('last_traject',current_traject);
 	if (sim.generation % 20 == 0) {
-		sim.setValue('init_rel_trajects',c(sim.getValue('init_rel_trajects'),current_traject));
-		//mean_scaled_teJumpP = track_transposition_scaling();
+		sim.setValue('init_rel_trajects', c(sim.getValue('init_rel_trajects'), current_traject));
 	}
 }
+
+// EXCISION occurs BEFORE Jumping Occurs
+late() {
+	for (individual in sim.subpopulations.individuals) {
+		// Pull + Count All TEs Present in Individual
+		ind_tes = individual.genomes.mutations;
+		ind_tes_count = size(ind_tes);
+		
+		// Determine How Many of Present TEs are lost
+		if (ind_tes_count * excision_rate !=0) {
+			ind_ExcisionCount = rpois(1,asFloat(ind_tes_count*excision_rate));
+		} else {
+			ind_ExcisionCount = 0.0;
+		}
+
+		// Manage Excisions of TEs
+		if (ind_ExcisionCount > 0.0 & ind_tes_count > 0) {
+			// Randomly choose a TE 
+			ExcisedTEs_ind = sample(ind_tes,min(ind_ExcisionCount,ind_tes_count));
+			
+			for (te in ExcisedTEs_ind) {
+				//Remove TE
+				individual.genomes.removeMutations(te);
+			}
+		}		
+	}
+}
+
 
 // Mimic Jumping of TEs during gametogenesis by Having active TEs jump here
 // NOTE: TE proliferation WILL NOT influence the fitness of the individual
@@ -354,23 +423,29 @@ late() {
 		ind_tes = individual.genomes.mutations;
 		ind_tes_count = size(ind_tes);
 		
-		// scale transposition s.t. u_t = u_0/(1 + kn) where k = scalar, n = copy number, k = 0.05
-		current_teJumpP = teJumpP/(1 + (scaleK * ind_tes_count));
+		//Re-scale the jump rate depending on the number of autonomous elements
+		num_auto = sum(individual.genomes.countOfMutationsOfType(m1) + individual.genomes.countOfMutationsOfType(m2) + individual.genomes.countOfMutationsOfType(m3) + individual.genomes.countOfMutationsOfType(m4));
+
+		//teJumpP_scale = ifelse(isInfinite(teJumpP/num_auto),0.0,teJumpP/num_auto);
+		//catn('Num_Auto-' + num_auto + " :  teJumpP_scale-" + teJumpP_scale);
 		
+
 		// Determine How Many of Present TEs Jump
-		if (ind_tes_count * teJumpP !=0) {
-			ind_jumpCount = rpois(1,asFloat(ind_tes_count*current_teJumpP));
+		if (num_auto * teJumpP !=0) {
+			ind_jumpCount = rpois(1,asFloat(num_auto*teJumpP));
 		} else {
 			ind_jumpCount = 0.0;
 		}
 		
+
 		// Manage Insertion of Jumping TEs
-		if (ind_jumpCount > 0.0 & ind_tes_count > 0) {
+		if (ind_jumpCount > 0.0 & num_auto > 0) {
 			// Randomly choose a TE 
 			jumpTEs_ind = sample(ind_tes,min(ind_jumpCount, ind_tes_count));
 			for (te in jumpTEs_ind) {
 				// Randomly choose which genome the TE will insert on to
-				if (runif(1,0,10) > 0.5) {
+				// 0 or 1 drawn w/ equal prob = 0.5
+				if (rbinom(1,1,0.5) > 0.5) { 
 					ind_gen = individual.genomes[0];
 				} else {
 					ind_gen = individual.genomes[1];
@@ -380,15 +455,32 @@ late() {
 				// position determines fitness effect of TE insertion
 				pos = rdunif(1,0,L-1);
 				if (size(setIntersection(neut_sites, pos))) {
-					mut = ind_gen.addNewDrawnMutation(m1,pos);
+					if (rbinom(1,1,0.5) > 0.5) {
+						mut = ind_gen.addNewDrawnMutation(m1,pos);
+					} else {
+						mut = ind_gen.addNewDrawnMutation(m5,pos);
+					}
+					
 				} else if (size(setIntersection(mini_sites, pos))) {
-					mut = ind_gen.addNewDrawnMutation(m2,pos);
+					if (rbinom(1,1,0.5) > 0.5) {
+						mut = ind_gen.addNewDrawnMutation(m2,pos);
+					} else {
+						mut = ind_gen.addNewDrawnMutation(m6,pos);
+					}				
 				} else if (size(setIntersection(mod_sites, pos))) {
-					mut = ind_gen.addNewDrawnMutation(m3,pos);
+					if (rbinom(1,1,0.5) > 0.5) {
+						mut = ind_gen.addNewDrawnMutation(m3,pos);
+					} else {
+						mut = ind_gen.addNewDrawnMutation(m7,pos);
+					}
 				} else {
-					mut = ind_gen.addNewDrawnMutation(m4,pos);
+					if (rbinom(1,1,0.5) > 0.5) {
+						mut = ind_gen.addNewDrawnMutation(m4,pos);
+					} else {
+						mut = ind_gen.addNewDrawnMutation(m8,pos);
+					}
 				}						
 			}
 		}
-	}
+	}	
 }
